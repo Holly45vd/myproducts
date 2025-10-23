@@ -14,6 +14,7 @@ import {
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
+import { formatKRW, formatMYR, toMYR } from "../utils/currency";
 
 export default function ProductCard({
   product,
@@ -38,6 +39,9 @@ export default function ProductCard({
     categoryL2,
   } = product || {};
 
+  // Determine "restock soon" state.
+  // Note: We keep the Korean keyword detector for backward compatibility,
+  // but all UI strings are shown in English.
   const _restockPending = useMemo(() => {
     if (typeof restockPending === "boolean") return restockPending;
     const hasRestockKeyword = (v) => {
@@ -52,16 +56,13 @@ export default function ProductCard({
     e?.preventDefault?.();
     e?.stopPropagation?.();
     if (!user) {
-      alert("로그인이 필요합니다.");
+      alert("Sign in required");
       return;
     }
     onToggleSave && onToggleSave(id);
   };
 
-  const fmtKRW = (n) =>
-    typeof n === "number" ? n.toLocaleString("ko-KR") + "원" : "-";
-
-  // 고정 사이즈(그리드 4열 맞춤)
+  // Fixed card size (fits a 4-column grid)
   const CARD_W = 250;
   const CARD_H = 400;
   const GAP_Y = 0.5;
@@ -84,7 +85,7 @@ export default function ProductCard({
         flexDirection: "column",
       }}
     >
-      {/* 이미지(정사각) + 링크 */}
+      {/* Image (square) + external link */}
       <CardActionArea
         component="a"
         href={link || "#"}
@@ -92,7 +93,7 @@ export default function ProductCard({
         rel={link ? "noopener noreferrer" : undefined}
         sx={{ position: "relative" }}
       >
-        {/* 안전한 정사각 박스 (aspect-ratio 미지원 환경 대응) */}
+        {/* Safe square box (for environments without aspect-ratio) */}
         <Box sx={{ position: "relative", width: "100%", pt: "100%", bgcolor: "grey.50" }}>
           {imageUrl ? (
             <Box
@@ -125,11 +126,11 @@ export default function ProductCard({
             </Box>
           )}
 
-          {/* 재입고 예정 오버레이 */}
+          {/* Restock overlay */}
           {_restockPending && (
             <Box
-              aria-label="재입고 예정"
-              title="재입고 예정"
+              aria-label="Restock soon"
+              title="Restock soon"
               sx={{
                 position: "absolute",
                 inset: 0,
@@ -144,18 +145,19 @@ export default function ProductCard({
                 variant="caption"
                 sx={{ color: "#fff", fontWeight: 800, letterSpacing: 0.5 }}
               >
-                재입고 예정
+                Restock Soon
               </Typography>
             </Box>
           )}
 
-          {/* 우상단 하트(찜) */}
-          <Tooltip title={user ? (isSaved ? "저장 해제" : "저장하기") : "로그인이 필요합니다."}>
+          {/* Top-right: save/unsave (heart) */}
+          <Tooltip title={user ? (isSaved ? "Remove from saved" : "Save this item") : "Sign in required"}>
             <span>
               <IconButton
                 onClick={tryToggle}
                 size="small"
                 disabled={!user}
+                aria-label={isSaved ? "Remove from saved" : "Save this item"}
                 sx={{
                   position: "absolute",
                   top: 6,
@@ -177,7 +179,7 @@ export default function ProductCard({
         </Box>
       </CardActionArea>
 
-      {/* 본문 */}
+      {/* Body */}
       <CardContent
         sx={{
           display: "flex",
@@ -188,7 +190,7 @@ export default function ProductCard({
           minHeight: 0,
         }}
       >
-        {/* 제목: 2줄 말줄임 */}
+        {/* Title: clamp to 2 lines */}
         <Typography
           variant={TITLE_V}
           fontWeight={700}
@@ -206,7 +208,7 @@ export default function ProductCard({
           {name}
         </Typography>
 
-        {/* 카테고리: 1줄만 노출 */}
+        {/* Categories: show a single line */}
         {showCategories && (categoryL1 || categoryL2 || _restockPending) && (
           <Box sx={{ maxHeight: 26, overflow: "hidden" }}>
             <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
@@ -216,17 +218,22 @@ export default function ProductCard({
               {categoryL2 && (
                 <Chip size={CHIP_SIZE} variant="outlined" color="info" label={`L2: ${categoryL2}`} />
               )}
-              {_restockPending && <Chip size={CHIP_SIZE} variant="outlined" label="재입고 예정" />}
+              {_restockPending && <Chip size={CHIP_SIZE} variant="outlined" label="Restock Soon" />}
             </Stack>
           </Box>
         )}
 
-        {/* 가격 */}
-        <Typography variant={PRICE_V} fontWeight={700} sx={{ fontSize: 13 }}>
-          {fmtKRW(price)}
-        </Typography>
+        {/* Price (KRW + MYR) */}
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Typography variant={PRICE_V} fontWeight={700} sx={{ fontSize: 13 }}>
+            {formatKRW(price)}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {formatMYR(toMYR(price))}
+          </Typography>
+        </Stack>
 
-        {/* 태그: 1줄만 +N */}
+        {/* Tags: one line +N */}
         {showTags && limitedTags.length > 0 && (
           <Box sx={{ maxHeight: 24, overflow: "hidden" }}>
             <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">

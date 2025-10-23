@@ -1,3 +1,4 @@
+// src/components/Navbar.jsx
 import React from "react";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 import {
@@ -17,6 +18,7 @@ import {
   Chip,
   Tooltip,
   useMediaQuery,
+  Badge,
 } from "@mui/material";
 import { styled, useTheme } from "@mui/material/styles";
 import StorefrontIcon from "@mui/icons-material/Storefront";
@@ -53,10 +55,10 @@ const NavButton = styled(Button)(({ theme }) => ({
 
 export default function Navbar({
   user,
-  onSignIn,      // 선택: 로그인 액션 (없으면 버튼 숨김)
-  onSignUp,      // 선택
-  onSignOut,     // 선택
-  savedCount,    // 선택: 찜 개수 뱃지로 보여주고 싶으면 숫자 전달
+  onSignIn,   // 선택
+  onSignUp,   // 선택
+  onSignOut,  // 선택
+  savedCount, // 선택: 숫자 전달 시 찜 배지 표시
 }) {
   const location = useLocation();
   const theme = useTheme();
@@ -96,7 +98,15 @@ export default function Navbar({
             to={it.to}
             selected={isActive(it.to)}
           >
-            <ListItemIcon>{it.icon}</ListItemIcon>
+            <ListItemIcon>
+              {it.to === "/saved" && typeof savedCount === "number" && savedCount > 0 ? (
+                <Badge color="primary" badgeContent={savedCount}>
+                  {it.icon}
+                </Badge>
+              ) : (
+                it.icon
+              )}
+            </ListItemIcon>
             <ListItemText primary={it.label} />
           </ListItemButton>
         ))}
@@ -110,7 +120,9 @@ export default function Navbar({
               <Typography variant="body2" noWrap title={user?.email || ""}>
                 {user?.displayName || user?.email || "로그인됨"}
               </Typography>
-              {isAdmin(user) && <Chip size="small" label="Admin" variant="outlined" sx={{ ml: "auto" }} />}
+              {isAdmin(user) && (
+                <Chip size="small" label="Admin" variant="outlined" sx={{ ml: "auto" }} />
+              )}
             </Box>
             {onSignOut && (
               <Button
@@ -129,12 +141,12 @@ export default function Navbar({
           <Box sx={{ display: "flex", gap: 1 }}>
             {onSignIn && (
               <Button onClick={onSignIn} startIcon={<LoginIcon />} variant="contained" fullWidth>
-                로그인
+                lOGIN
               </Button>
             )}
             {onSignUp && (
               <Button onClick={onSignUp} variant="outlined" fullWidth>
-                회원가입
+                REGISTER
               </Button>
             )}
           </Box>
@@ -155,7 +167,7 @@ export default function Navbar({
           <Toolbar sx={{ gap: 1 }}>
             {/* 모바일: 햄버거 */}
             {isMobile && (
-              <IconButton edge="start" onClick={() => setOpen(true)}>
+              <IconButton edge="start" onClick={() => setOpen(true)} aria-label="메뉴 열기">
                 <MenuIcon />
               </IconButton>
             )}
@@ -166,49 +178,42 @@ export default function Navbar({
               to="/"
               style={{ textDecoration: "none", color: "inherit" }}
             >
-             
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <StorefrontIcon />
+                <Typography variant="h6" fontWeight={800}>
+                  Products
+                </Typography>
+              </Box>
             </Box>
 
             {/* 데스크톱: 네비 버튼들 */}
             {!isMobile && (
               <Box sx={{ display: "flex", gap: 0.5, ml: 2 }}>
-                {items.map((it) => (
-                  <NavButton
-                    key={it.to}
-                    className={isActive(it.to) ? "active" : ""}
-                    component={RouterLink}
-                    to={it.to}
-                    startIcon={
-                      it.label === "찜" && typeof savedCount === "number" ? (
-                        <Box sx={{ position: "relative" }}>
-                          <FavoriteBorderIcon />
-                          {savedCount > 0 && (
-                            <Box
-                              sx={{
-                                position: "absolute",
-                                top: -6,
-                                right: -8,
-                                bgcolor: "primary.main",
-                                color: "primary.contrastText",
-                                borderRadius: "10px",
-                                fontSize: 10,
-                                px: 0.6,
-                                lineHeight: "16px",
-                              }}
-                            >
-                              {savedCount}
-                            </Box>
-                          )}
-                        </Box>
-                      ) : (
-                        it.icon
-                      )
-                    }
-                    color="inherit"
-                  >
-                    {it.label}
-                  </NavButton>
-                ))}
+                {items.map((it) => {
+                  const active = isActive(it.to);
+                  const isSaved = it.to === "/saved";
+                  return (
+                    <NavButton
+                      key={it.to}
+                      className={active ? "active" : ""}
+                      component={RouterLink}
+                      to={it.to}
+                      color="inherit"
+                      startIcon={
+                        isSaved && typeof savedCount === "number" && savedCount > 0 ? (
+                          <Badge color="primary" badgeContent={savedCount}>
+                            <FavoriteBorderIcon />
+                          </Badge>
+                        ) : (
+                          it.icon
+                        )
+                      }
+                      aria-label={it.label}
+                    >
+                      {it.label}
+                    </NavButton>
+                  );
+                })}
               </Box>
             )}
 
@@ -224,18 +229,18 @@ export default function Navbar({
                       sx={{ maxWidth: 220 }}
                     />
                   </Tooltip>
-                  {isAdmin(user) && <Chip size="small" label="Admin" color="primary" variant="outlined" />}
-                  {!isMobile && (
-                    onSignOut && (
-                      <Button
-                        onClick={onSignOut}
-                        startIcon={<LogoutIcon />}
-                        variant="outlined"
-                        sx={{ ml: 0.5 }}
-                      >
-                        로그아웃
-                      </Button>
-                    )
+                  {isAdmin(user) && (
+                    <Chip size="small" label="Admin" color="primary" variant="outlined" />
+                  )}
+                  {!isMobile && onSignOut && (
+                    <Button
+                      onClick={onSignOut}
+                      startIcon={<LogoutIcon />}
+                      variant="outlined"
+                      sx={{ ml: 0.5 }}
+                    >
+                      LOGOUT
+                    </Button>
                   )}
                 </>
               ) : (
@@ -243,12 +248,12 @@ export default function Navbar({
                   <>
                     {onSignIn && (
                       <Button onClick={onSignIn} startIcon={<LoginIcon />} variant="contained">
-                        로그인
+                        LOGIN
                       </Button>
                     )}
                     {onSignUp && (
                       <Button onClick={onSignUp} variant="outlined">
-                        회원가입
+                        REGISTER
                       </Button>
                     )}
                   </>

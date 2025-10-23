@@ -43,14 +43,91 @@ const en = {
     best_new: 'Best/New',
     unspecified: '(Unspecified)',
   },
-  catL2: {
-    // 예시 (필요한 것만 추가; 키는 영어 ID)
-    detergents_brushes: 'Detergents/Brushes',
-    laundry_racks: 'Laundry Nets/Drying Racks',
-    bath_mats_towels: 'Bath Mats/Towels',
-    trash_recycle: 'Trash/Recycle',
-    // ... 이하 동일
+catL2: {
+    // Cleaning/Bath
+    detergents_brushes: "Detergents/Brushes",
+    laundry_nets_racks: "Laundry Nets/Drying Racks",
+    bath_mats_towels: "Bath Mats/Towels",
+    trash_recycle: "Trash/Recycle",
+
+    // Storage/Organization
+    storage_baskets: "Storage Boxes/Baskets",
+    living_boxes_organizers: "Living Boxes/Organizers",
+    slim_storage: "Slim Storage",
+    hangers_shelves: "Hangers/Shelves",
+    kitchen_storage: "Kitchen Storage",
+    fridge_organizing: "Fridge Organizing",
+
+    // Kitchen
+    tableware_plates_bowls: "Tableware (Plates/Bowls)",
+    cups_bottles_tumblers: "Cups/Bottles/Tumblers",
+    food_containers: "Food Containers",
+    cooking_tools_knives_scissors: "Cooking Tools (Knives/Scissors)",
+    kitchen_misc_cloths_sponges: "Kitchen Misc. (Cloths/Sponges)",
+
+    // Stationery/Fancy
+    writing_notebooks: "Writing Instruments/Notebooks",
+    office_supplies_files_docs: "Office Supplies (Files/Documents)",
+    packing_supplies: "Packing Supplies",
+    design_stationery: "Design Stationery",
+    gadget_accessories: "Electronic Accessories",
+
+    // Beauty/Hygiene
+    skin_body_care: "Skin/Body Care",
+    sheet_masks: "Sheet Masks",
+    makeup_tools_brushes: "Makeup Tools (Brushes)",
+    makeup: "Makeup",
+    hygiene_masks_bandages: "Hygiene (Masks/Bandages)",
+
+    // Fashion/Accessories
+    apparel_underwear: "Apparel/Underwear",
+    bags_pouches: "Bags/Pouches",
+    socks_stockings: "Socks/Stockings",
+    fashion_accessories: "Fashion Accessories",
+    shoe_care: "Shoe Care",
+
+    // Interior/Gardening
+    home_decor_cushions_curtains: "Home Décor (Cushions/Curtains)",
+    frames_clocks: "Frames/Clocks",
+    gardening_pots_seeds: "Gardening (Pots/Seeds)",
+    lighting: "Lighting",
+    seasonal_decor: "Seasonal Décor",
+
+    // Tools/Digital
+    tools_safety: "Tools/Safety",
+    car_bike_accessories: "Car/Bike Accessories",
+    digital_accessories_cables_chargers: "Digital Accessories (Cables/Chargers)",
+    batteries: "Batteries",
+
+    // Sports/Leisure/Hobby
+    camping_travel: "Camping/Travel",
+    sports_fitness: "Sports/Fitness",
+    diy_hobbies: "DIY/Hobbies",
+    knitting_crafts: "Knitting/Crafts",
+    pet_supplies: "Pet Supplies",
+
+    // Food
+    snacks_chocolate: "Snacks/Chocolate",
+    drinks_juice: "Drinks/Juice",
+    ramen_instant: "Ramen/Instant Foods",
+    health_food: "Health Foods",
+    nuts: "Nuts",
+
+    // Baby/Toys
+    baby_kids_goods: "Baby/Kids Goods",
+    toys: "Toys",
+    educational_learning: "Educational/Learning",
+
+    // Seasonal/Series
+    spring_summer_collection: "Spring/Summer Collection",
+    traditional_series: "Traditional Series",
+    character_collab: "Character Collaboration",
+
+    // Best/New
+    bestsellers: "Best Sellers",
+    new_arrivals: "New Arrivals",
   },
+  
   chips: {
     l1: 'L1',
     l2: 'L2',

@@ -1,7 +1,9 @@
 // src/firebase.js
+
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth, signInAnonymously, onAuthStateChanged ,GoogleAuthProvider  } from "firebase/auth";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyANztxTFqEwfR_5Tj2u-Dlfj8EZikRAn5o",
@@ -18,5 +20,5 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-console.log("app.options", app.options); // projectId, apiKey, authDomain 확인
-console.log("auth.config", getAuth().config); // 사용 중인 API host 확인 
+console.log("app.options", app.options);
+// console.log("auth.config", getAuth().config); // ❌ 삭제 권장

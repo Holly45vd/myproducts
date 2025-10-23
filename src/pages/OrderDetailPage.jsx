@@ -53,7 +53,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
-const fmtKRW = (n = 0) => Number(n || 0).toLocaleString("ko-KR");
+// ✅ 통화 유틸 (고정 환율)
+import { formatKRW, formatMYR, toMYR, KRW_PER_MYR } from "../utils/currency";
 
 export default function OrderDetailPage() {
   const { user, loadingUser } = useSavedProducts();
@@ -61,14 +62,14 @@ export default function OrderDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // /orders/new 감지
+  // detect /orders/new
   const isNew = !orderId && location.pathname.endsWith("/orders/new");
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [order, setOrder] = useState(null);
 
-  // 편집 상태
+  // edit states
   const [orderName, setOrderName] = useState("");
   const [orderDate, setOrderDate] = useState("");
   const [discountAmount, setDiscountAmount] = useState(0);
@@ -79,16 +80,16 @@ export default function OrderDetailPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [stayAfterSave, setStayAfterSave] = useState(true); // ✅ 저장 후 머무르기
+  const [stayAfterSave, setStayAfterSave] = useState(true); // stay on page after saving
 
-  // 1) /orders/new 진입 시: 드래프트 생성 → 상세로 이동
+  // 1) Entering /orders/new: create draft → navigate to detail
   useEffect(() => {
     if (!user || !isNew) return;
 
     (async () => {
       try {
         const payload = {
-          orderName: "새 주문서",
+          orderName: "New Order",
           orderDate: new Date().toISOString().slice(0, 10),
           discountAmount: 0,
           totalQty: 0,
@@ -102,25 +103,25 @@ export default function OrderDetailPage() {
         navigate(`/orders/${ref.id}`, { replace: true, state: { created: true } });
       } catch (e) {
         console.error(e);
-        setErr(e?.message || "주문서 생성 실패");
+        setErr(e?.message || "Failed to create order");
       }
     })();
   }, [user, isNew, navigate]);
 
-  // 새로 생성되어 진입했을 때 안내
+  // Show notice when just created and entered
   useEffect(() => {
     if (location.state?.created) {
-      setSnack({ open: true, msg: "주문서가 생성되었습니다.", severity: "success" });
-      // 한 번만 보이게 상태 제거
+      setSnack({ open: true, msg: "Order created.", severity: "success" });
+      // remove state so it only shows once
       navigate(location.pathname, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 2) 기존 주문 상세 로드
+  // 2) Load existing order detail
   useEffect(() => {
     if (!user || isNew) {
-      // isNew면 위 useEffect가 리다이렉트 처리
+      // if isNew, the redirect above will handle it
       if (!user) setLoading(false);
       return;
     }
@@ -132,7 +133,7 @@ export default function OrderDetailPage() {
         const ref = doc(collection(db, "users", user.uid, "orders"), orderId);
         const snap = await getDoc(ref);
         if (!snap.exists()) {
-          setErr("주문서를 찾을 수 없습니다.");
+          setErr("Order not found.");
           setOrder(null);
           return;
         }
@@ -152,7 +153,7 @@ export default function OrderDetailPage() {
         );
       } catch (e) {
         console.error(e);
-        setErr(e?.message || "불러오기 실패");
+        setErr(e?.message || "Failed to load");
       } finally {
         setLoading(false);
       }
@@ -191,7 +192,7 @@ export default function OrderDetailPage() {
     if (items.length === 0) {
       setSnack({
         open: true,
-        msg: "최소 1개 이상의 아이템이 필요합니다.",
+        msg: "At least one item is required.",
         severity: "warning",
       });
       return;
@@ -199,7 +200,7 @@ export default function OrderDetailPage() {
     if (!orderDate || Number.isNaN(new Date(orderDate).getTime())) {
       setSnack({
         open: true,
-        msg: "주문일이 올바르지 않습니다.",
+        msg: "Invalid order date.",
         severity: "warning",
       });
       return;
@@ -230,13 +231,13 @@ export default function OrderDetailPage() {
     try {
       setSaving(true);
       await updateDoc(doc(db, "users", user.uid, "orders", order.id), payload);
-      setSnack({ open: true, msg: "저장 완료", severity: "success" });
+      setSnack({ open: true, msg: "Saved.", severity: "success" });
       if (!stayAfterSave) {
         navigate("/orders", { replace: true });
       }
     } catch (e) {
       console.error(e);
-      setSnack({ open: true, msg: e?.message || "저장 실패", severity: "error" });
+      setSnack({ open: true, msg: e?.message || "Save failed", severity: "error" });
     } finally {
       setSaving(false);
     }
@@ -247,11 +248,11 @@ export default function OrderDetailPage() {
     setDeleting(true);
     try {
       await deleteDoc(doc(db, "users", user.uid, "orders", order.id));
-      setSnack({ open: true, msg: "삭제 완료", severity: "success" });
+      setSnack({ open: true, msg: "Deleted.", severity: "success" });
       navigate("/orders", { replace: true });
     } catch (e) {
       console.error(e);
-      setSnack({ open: true, msg: e?.message || "삭제 실패", severity: "error" });
+      setSnack({ open: true, msg: e?.message || "Delete failed", severity: "error" });
     } finally {
       setDeleting(false);
       setConfirmOpen(false);
@@ -262,7 +263,7 @@ export default function OrderDetailPage() {
   if (!user) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="info">로그인이 필요합니다.</Alert>
+        <Alert severity="info">Log in is required.</Alert>
       </Container>
     );
   }
@@ -274,7 +275,7 @@ export default function OrderDetailPage() {
       >
         <CircularProgress />
         <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-          불러오는 중…
+          Loading...
         </Typography>
       </Container>
     );
@@ -290,7 +291,7 @@ export default function OrderDetailPage() {
 
   return (
     <>
-      {/* 상단 앱바 */}
+      {/* Top AppBar */}
       <AppBar
         position="sticky"
         color="transparent"
@@ -298,13 +299,13 @@ export default function OrderDetailPage() {
         sx={{ borderBottom: "1px solid", borderColor: "divider" }}
       >
         <Toolbar sx={{ gap: 1 }}>
-          <Tooltip title="뒤로">
+          <Tooltip title="Back">
             <IconButton edge="start" onClick={() => navigate(-1)}>
               <ArrowBackIcon />
             </IconButton>
           </Tooltip>
           <Typography variant="h6" sx={{ ml: 1, fontWeight: 700 }}>
-            주문서 수정
+            Edit Order
           </Typography>
           <Box sx={{ flex: 1 }} />
           <FormControlLabel
@@ -315,7 +316,7 @@ export default function OrderDetailPage() {
                 size="small"
               />
             }
-            label="저장 후 이 페이지에 머물기"
+            label="Stay on this page after saving"
           />
           <Stack direction="row" spacing={1}>
             <Button
@@ -324,7 +325,7 @@ export default function OrderDetailPage() {
               onClick={handleSave}
               disabled={items.length === 0 || saving}
             >
-              {saving ? "저장중…" : "저장"}
+              {saving ? "Saving…" : "Save"}
             </Button>
             <Button
               variant="outlined"
@@ -332,20 +333,20 @@ export default function OrderDetailPage() {
               startIcon={<DeleteIcon />}
               onClick={() => setConfirmOpen(true)}
             >
-              삭제
+              Delete
             </Button>
           </Stack>
         </Toolbar>
       </AppBar>
 
       <Container maxWidth="lg" sx={{ py: 3 }}>
-        {/* 상단 폼 */}
+        {/* Top form */}
         <Card variant="outlined" sx={{ mb: 2 }}>
           <CardContent>
             <Grid container spacing={2} alignItems="center">
               <Grid item xs={12} md={6}>
                 <TextField
-                  label="주문서 이름"
+                  label="Order Name"
                   value={orderName}
                   onChange={(e) => setOrderName(e.target.value)}
                   fullWidth
@@ -354,7 +355,7 @@ export default function OrderDetailPage() {
               </Grid>
               <Grid item xs={12} md={3}>
                 <TextField
-                  label="주문일"
+                  label="Order Date"
                   type="date"
                   value={orderDate}
                   onChange={(e) => setOrderDate(e.target.value)}
@@ -365,7 +366,7 @@ export default function OrderDetailPage() {
               </Grid>
               <Grid item xs={12} md={3}>
                 <TextField
-                  label="할인금액"
+                  label="Discount Amount"
                   value={discountAmount}
                   onChange={(e) =>
                     setDiscountAmount(String(e.target.value).replace(/[^\d]/g, ""))
@@ -374,16 +375,17 @@ export default function OrderDetailPage() {
                   size="small"
                   inputMode="numeric"
                   InputProps={{
-                    endAdornment: <InputAdornment position="end">원</InputAdornment>,
+                    endAdornment: <InputAdornment position="end">KRW</InputAdornment>,
                     sx: { textAlign: "right" },
                   }}
+                  helperText={`Fixed rate: 1 MYR = ${KRW_PER_MYR.toLocaleString("ko-KR")} KRW`}
                 />
               </Grid>
             </Grid>
           </CardContent>
         </Card>
 
-        {/* 합계바 */}
+        {/* Totals bar */}
         <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
           <Stack
             direction="row"
@@ -392,29 +394,40 @@ export default function OrderDetailPage() {
             flexWrap="wrap"
             justifyContent="flex-end"
           >
-            <Chip label={`총 수량 ${totals.totalQty}개`} variant="outlined" />
+            <Chip label={`Total Qty ${totals.totalQty}`} variant="outlined" />
             <Divider flexItem orientation="vertical" sx={{ mx: 0.5 }} />
-            <Chip label={`상품합계 ${fmtKRW(totals.totalPrice)} 원`} />
+            <Chip
+              label={`Items Subtotal ${formatKRW(totals.totalPrice)} KRW · ${formatMYR(
+                toMYR(totals.totalPrice)
+              )}`}
+            />
             <Chip
               color="default"
               variant="outlined"
-              label={`할인 -${fmtKRW(totals.discount)} 원`}
+              label={`Discount -${formatKRW(totals.discount)} KRW · -${formatMYR(
+                toMYR(totals.discount)
+              )}`}
             />
-            <Chip color="primary" label={`결제합계 ${fmtKRW(totals.finalTotal)} 원`} />
+            <Chip
+              color="primary"
+              label={`Final Total ${formatKRW(totals.finalTotal)} KRW · ${formatMYR(
+                toMYR(totals.finalTotal)
+              )}`}
+            />
           </Stack>
         </Paper>
 
-        {/* 아이템 테이블 */}
+        {/* Items table */}
         <Paper variant="outlined">
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: "grey.50" }}>
-                <TableCell>상품</TableCell>
-                <TableCell>코드</TableCell>
-                <TableCell align="right">가격</TableCell>
-                <TableCell align="center">수량</TableCell>
-                <TableCell align="right">소계</TableCell>
-                <TableCell align="center">원본/삭제</TableCell>
+                <TableCell>Product</TableCell>
+                <TableCell>Code</TableCell>
+                <TableCell align="right">Price</TableCell>
+                <TableCell align="center">Qty</TableCell>
+                <TableCell align="right">Subtotal</TableCell>
+                <TableCell align="center">Link/Delete</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -464,7 +477,15 @@ export default function OrderDetailPage() {
                     </Typography>
                   </TableCell>
 
-                  <TableCell align="right">{fmtKRW(it.price)} 원</TableCell>
+                  {/* Price: KRW + MYR */}
+                  <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                    <Stack spacing={0} alignItems="flex-end">
+                      <Typography>{`${formatKRW(it.price)} KRW`}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {formatMYR(toMYR(it.price))}
+                      </Typography>
+                    </Stack>
+                  </TableCell>
 
                   <TableCell align="center" sx={{ minWidth: 100 }}>
                     <TextField
@@ -476,16 +497,21 @@ export default function OrderDetailPage() {
                     />
                   </TableCell>
 
-                  <TableCell align="right">
-                    <Typography fontWeight={700}>
-                      {fmtKRW(Number(it.price || 0) * Number(it.qty || 0))}
-                    </Typography>{" "}
-                    원
+                  {/* Subtotal: KRW + MYR */}
+                  <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                    <Stack spacing={0} alignItems="flex-end">
+                      <Typography fontWeight={700}>
+                        {formatKRW(Number(it.price || 0) * Number(it.qty || 0))} KRW
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {formatMYR(toMYR(Number(it.price || 0) * Number(it.qty || 0)))}
+                      </Typography>
+                    </Stack>
                   </TableCell>
 
                   <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>
                     {it.link ? (
-                      <Tooltip title="원본 열기">
+                      <Tooltip title="Open link">
                         <IconButton
                           size="small"
                           component="a"
@@ -501,7 +527,7 @@ export default function OrderDetailPage() {
                         -
                       </Typography>
                     )}
-                    <Tooltip title="행 삭제">
+                    <Tooltip title="Remove row">
                       <span>
                         <Button
                           size="small"
@@ -510,7 +536,7 @@ export default function OrderDetailPage() {
                           onClick={() => handleRemoveRow(idx)}
                           sx={{ ml: 1 }}
                         >
-                          삭제
+                          Delete
                         </Button>
                       </span>
                     </Tooltip>
@@ -522,7 +548,7 @@ export default function OrderDetailPage() {
                 <TableRow>
                   <TableCell colSpan={6} align="center">
                     <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                      아이템이 없습니다. (상단에서 저장할 수 없습니다)
+                      No items. (You cannot save without items)
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -530,24 +556,31 @@ export default function OrderDetailPage() {
             </TableBody>
           </Table>
         </Paper>
+
+        {/* 고정 환율 안내 */}
+        <Box sx={{ mt: 1 }}>
+          <Typography variant="caption" color="text.secondary">
+            Fixed rate used in this page: 1 MYR = {KRW_PER_MYR.toLocaleString("ko-KR")} KRW
+          </Typography>
+        </Box>
       </Container>
 
-      {/* 삭제 확인 다이얼로그 */}
+      {/* Delete confirm dialog */}
       <Dialog
         open={confirmOpen}
         onClose={() => (deleting ? null : setConfirmOpen(false))}
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle>주문서 삭제</DialogTitle>
+        <DialogTitle>Delete Order</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            이 주문서를 삭제합니다. 되돌릴 수 없습니다.
+            This will delete the order. This action cannot be undone.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirmOpen(false)} disabled={deleting}>
-            취소
+            Cancel
           </Button>
           <Button
             variant="contained"
@@ -556,12 +589,12 @@ export default function OrderDetailPage() {
             onClick={handleDeleteOrder}
             disabled={deleting}
           >
-            {deleting ? "삭제중…" : "삭제"}
+            {deleting ? "Deleting…" : "Delete"}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* 스낵바 */}
+      {/* Snackbar */}
       <Snackbar
         open={snack.open}
         autoHideDuration={3000}

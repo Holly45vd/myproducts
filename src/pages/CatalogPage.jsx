@@ -69,13 +69,92 @@ const L1_KO_TO_KEY = {
   "베스트/신상품": "best_new",
 };
 
+// 🔄 REPLACE this whole block
 const L2_KO_TO_KEY = {
+  /* 청소/욕실 */
   "청소용품(세제/브러쉬)": "detergents_brushes",
-  "세탁용품(세탁망/건조대)": "laundry_racks",
+  "세탁용품(세탁망/건조대)": "laundry_nets_racks",
   "욕실용품(발매트/수건)": "bath_mats_towels",
   "휴지통/분리수거": "trash_recycle",
-  // 필요시 계속 추가. 미정 의역 키는 i18n 'catL2'에 등록되면 번역됨.
+
+  /* 수납/정리 */
+  "수납박스/바구니": "storage_baskets",
+  "리빙박스/정리함": "living_boxes_organizers",
+  "틈새수납": "slim_storage",
+  "옷걸이/선반": "hangers_shelves",
+  "주방수납": "kitchen_storage",
+  "냉장고 정리": "fridge_organizing",
+
+  /* 주방용품 */
+  "식기(접시/그릇)": "tableware_plates_bowls",
+  "컵/물병/텀블러": "cups_bottles_tumblers",
+  "밀폐용기": "food_containers",
+  "조리도구(칼/가위)": "cooking_tools_knives_scissors",
+  "주방잡화(행주/수세미)": "kitchen_misc_cloths_sponges",
+
+  /* 문구/팬시 */
+  "필기구/노트": "writing_notebooks",
+  "사무용품(파일/서류)": "office_supplies_files_docs",
+  "포장용품": "packing_supplies",
+  "디자인 문구": "design_stationery",
+  "전자기기 액세서리": "gadget_accessories",
+
+  /* 뷰티/위생 */
+  "스킨/바디케어": "skin_body_care",
+  "마스크팩": "sheet_masks",
+  "화장소품(브러쉬)": "makeup_tools_brushes",
+  "메이크업": "makeup",
+  "위생용품(마스크/밴드)": "hygiene_masks_bandages",
+
+  /* 패션/잡화 */
+  "의류/언더웨어": "apparel_underwear",
+  "가방/파우치": "bags_pouches",
+  "양말/스타킹": "socks_stockings",
+  "패션소품(액세서리)": "fashion_accessories",
+  "슈즈용품": "shoe_care",
+
+  /* 인테리어/원예 */
+  "홈데코(쿠션/커튼)": "home_decor_cushions_curtains",
+  "액자/시계": "frames_clocks",
+  "원예용품(화분/씨앗)": "gardening_pots_seeds",
+  "조명": "lighting",
+  "시즌 데코": "seasonal_decor",
+
+  /* 공구/디지털 */
+  "공구/안전용품": "tools_safety",
+  "차량/자전거 용품": "car_bike_accessories",
+  "디지털 액세서리(케이블/충전기)": "digital_accessories_cables_chargers",
+  "전지/건전지": "batteries",
+
+  /* 스포츠/레저/취미 */
+  "캠핑/여행용품": "camping_travel",
+  "스포츠/헬스용품": "sports_fitness",
+  "DIY/취미용품": "diy_hobbies",
+  "뜨개/공예": "knitting_crafts",
+  "반려동물용품": "pet_supplies",
+
+  /* 식품 */
+  "과자/초콜릿": "snacks_chocolate",
+  "음료/주스": "drinks_juice",
+  "라면/즉석식품": "ramen_instant",
+  "건강식품": "health_food",
+  "견과류": "nuts",
+
+  /* 유아/완구 */
+  "아동/유아용품": "baby_kids_goods",
+  "완구/장난감": "toys",
+  "교육/학습용품": "educational_learning",
+
+  /* 시즌/시리즈 */
+  "봄/여름 기획": "spring_summer_collection",
+  "전통 시리즈": "traditional_series",
+  "캐릭터 컬래버": "character_collab",
+
+  /* 베스트/신상품 */
+  "인기 순위 상품": "bestsellers",
+  "신상품": "new_arrivals",
 };
+
 
 /** 태그 파싱 */
 function tokenizeTags(input = "") {

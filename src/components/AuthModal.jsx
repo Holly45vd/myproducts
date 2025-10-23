@@ -1,52 +1,147 @@
 // src/components/AuthModal.jsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Tabs,
+  Tab,
+  Button,
+  IconButton,
+  InputAdornment,
+  Alert,
+  Stack,
+} from "@mui/material";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 
 export default function AuthModal({ open, onClose, onSignIn, onSignUp }) {
   const [mode, setMode] = useState("signin"); // 'signin' | 'signup'
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState("");
 
-  if (!open) return null;
+  useEffect(() => {
+    if (!open) {
+      // reset on close
+      setSubmitting(false);
+      setErr("");
+      setPassword("");
+      setEmail("");
+      setMode("signin");
+      setShowPw(false);
+    }
+  }, [open]);
 
   const submit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
+    setErr("");
+    if (!email || !password) {
+      setErr("이메일과 비밀번호를 입력하세요.");
+      return;
+    }
     try {
+      setSubmitting(true);
       if (mode === "signin") await onSignIn(email, password);
       else await onSignUp(email, password);
-      onClose();
+      onClose?.();
     } catch (e) {
-      alert(e.message || e.code);
+      setErr(e?.message || e?.code || "처리 중 오류가 발생했습니다.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  const canSubmit = email && password && !submitting;
+
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.3)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:50 }}>
-      <div style={{ width:360, background:"#fff", borderRadius:12, padding:16, boxShadow:"0 10px 30px rgba(0,0,0,.15)" }}>
-        <h3 style={{ margin:"0 0 8px" }}>{mode === "signin" ? "로그인" : "회원가입"}</h3>
-        <form onSubmit={submit} style={{ display:"grid", gap:8 }}>
-          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="이메일" required
-            style={{ border:"1px solid #e5e7eb", borderRadius:8, padding:"8px 10px" }}/>
-          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="비밀번호" required
-            style={{ border:"1px solid #e5e7eb", borderRadius:8, padding:"8px 10px" }}/>
-          <button type="submit" style={{ borderRadius:8, padding:"8px 12px", border:"1px solid #e5e7eb", background:"#111827", color:"#fff" }}>
-            {mode === "signin" ? "로그인" : "가입"}
-          </button>
+    <Dialog
+      open={open}
+      onClose={submitting ? undefined : onClose}
+      maxWidth="xs"
+      fullWidth
+    >
+      <DialogTitle sx={{ pb: 1 }}>
+        <Tabs
+          value={mode}
+          onChange={(_, v) => {
+            setMode(v);
+            setErr("");
+          }}
+          aria-label="auth-mode"
+        >
+          <Tab value="signin" label="로그인" />
+          <Tab value="signup" label="회원가입" />
+        </Tabs>
+      </DialogTitle>
+
+      <DialogContent>
+        <form onSubmit={submit} id="authForm">
+          <Stack spacing={1.5} sx={{ pt: 1 }}>
+            {err && <Alert severity="error">{err}</Alert>}
+
+            <TextField
+              label="이메일"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoFocus
+              fullWidth
+              required
+              size="small"
+              autoComplete="email"
+            />
+
+            <TextField
+              label="비밀번호"
+              type={showPw ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              fullWidth
+              size="small"
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="비밀번호 표시 토글"
+                      onClick={() => setShowPw((v) => !v)}
+                      edge="end"
+                    >
+                      {showPw ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+              helperText={
+                mode === "signup" ? "8자 이상, 안전한 비밀번호를 권장합니다." : " "
+              }
+            />
+          </Stack>
         </form>
-        <div style={{ marginTop:8, fontSize:12 }}>
-          {mode === "signin" ? (
-            <button onClick={()=>setMode("signup")} style={{ background:"none", border:"none", color:"#2563eb", cursor:"pointer" }}>
-              계정이 없나요? 회원가입
-            </button>
-          ) : (
-            <button onClick={()=>setMode("signin")} style={{ background:"none", border:"none", color:"#2563eb", cursor:"pointer" }}>
-              이미 계정이 있나요? 로그인
-            </button>
-          )}
-        </div>
-        <div style={{ marginTop:8 }}>
-          <button onClick={onClose} style={{ background:"none", border:"none", color:"#6b7280", cursor:"pointer" }}>닫기</button>
-        </div>
-      </div>
-    </div>
+      </DialogContent>
+
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose} disabled={submitting}>
+          닫기
+        </Button>
+        <Button
+          type="submit"
+          form="authForm"
+          variant="contained"
+          onClick={submit}
+          disabled={!canSubmit}
+        >
+          {submitting
+            ? (mode === "signin" ? "로그인 중…" : "가입 중…")
+            : (mode === "signin" ? "로그인" : "가입")}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
