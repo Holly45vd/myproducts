@@ -31,6 +31,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import LoginIcon from "@mui/icons-material/Login";
 import PersonIcon from "@mui/icons-material/Person";
 import { isAdmin } from "../utils/authz";
+import { useLanguage } from "../context/LanguageContext"; // 추가
 
 /** 네비 항목 정의 */
 const NAV_ITEMS = [
@@ -41,6 +42,8 @@ const NAV_ITEMS = [
 ];
 
 const AdminItem = { to: "/edit", label: "Admin", icon: <AdminPanelSettingsIcon /> };
+
+
 
 /** 활성 경로 스타일 버튼 */
 const NavButton = styled(Button)(({ theme }) => ({
@@ -61,6 +64,8 @@ export default function Navbar({
   savedCount, // 선택: 숫자 전달 시 찜 배지 표시
 }) {
   const location = useLocation();
+   const { isKorean, toggleLanguage } = useLanguage(); // ✅ 컴포넌트 내부
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [open, setOpen] = React.useState(false);
@@ -219,6 +224,13 @@ export default function Navbar({
 
             {/* 우측 영역 */}
             <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}>
+              <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}>
+  {/* 기존 로그인/로그아웃 영역 */}
+  <Button onClick={toggleLanguage} variant="outlined" size="small">
+    {isKorean ? 'en' : 'ko'}
+  </Button>
+</Box>
+
               {user ? (
                 <>
                   <Tooltip title={user?.email || ""}>

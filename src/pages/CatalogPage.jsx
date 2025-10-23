@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+// src/pages/CatalogPage.jsx
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "../firebase";
 import useSavedProducts from "../hooks/useSavedProducts";
 import ProductCard from "../components/ProductCard";
 import { useTranslation } from "react-i18next";
+
 
 /* ================= MUI ================= */
 import {
@@ -35,7 +37,7 @@ import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import CategoryIcon from "@mui/icons-material/Category";
 import LayersIcon from "@mui/icons-material/Layers";
 
-/** 기존 한글 카테고리 맵(데이터는 유지) */
+/** (데이터는 한글 유지) 카테고리 맵 */
 const CATEGORY_MAP = {
   "청소/욕실": ["청소용품(세제/브러쉬)", "세탁용품(세탁망/건조대)", "욕실용품(발매트/수건)", "휴지통/분리수거"],
   "수납/정리": ["수납박스/바구니", "리빙박스/정리함", "틈새수납", "옷걸이/선반", "주방수납", "냉장고 정리"],
@@ -52,7 +54,10 @@ const CATEGORY_MAP = {
   "베스트/신상품": ["인기 순위 상품", "신상품"],
 };
 
-/** 한글 → i18n key (없으면 원문 fallback) */
+
+
+
+/** L1 i18n key 매핑 */
 const L1_KO_TO_KEY = {
   "청소/욕실": "home_cleaning",
   "수납/정리": "storage",
@@ -69,7 +74,7 @@ const L1_KO_TO_KEY = {
   "베스트/신상품": "best_new",
 };
 
-// 🔄 REPLACE this whole block
+/** L2 i18n key 매핑 */
 const L2_KO_TO_KEY = {
   /* 청소/욕실 */
   "청소용품(세제/브러쉬)": "detergents_brushes",
@@ -155,7 +160,6 @@ const L2_KO_TO_KEY = {
   "신상품": "new_arrivals",
 };
 
-
 /** 태그 파싱 */
 function tokenizeTags(input = "") {
   return String(input)
@@ -164,7 +168,7 @@ function tokenizeTags(input = "") {
     .filter(Boolean);
 }
 
-/** 재입고 예정 판별 */
+/** 재입고 예정 판별 (데이터 호환용 한국어 키워드 유지) */
 const hasRestockKeyword = (v) => {
   if (!v) return false;
   const s = Array.isArray(v) ? v.join(" ") : String(v);
@@ -190,6 +194,7 @@ export default function CatalogPage() {
   const [loading, setLoading] = useState(true);
   const [onlySaved, setOnlySaved] = useState(false);
 
+
   const [fCatL1, setFCatL1] = useState("");
   const [fCatL2, setFCatL2] = useState("");
   const [fTag, setFTag] = useState("");
@@ -200,6 +205,12 @@ export default function CatalogPage() {
   const [facetMode, setFacetMode] = useState("include"); // 'include' | 'exclude'
 
   const { user, savedIds, toggleSave } = useSavedProducts();
+
+  // savedIds가 Set이 아닐 수도 있으니 안전하게 Set으로 보장
+  const savedSet = useMemo(() => {
+    if (!savedIds) return new Set();
+    return savedIds instanceof Set ? savedIds : new Set(savedIds);
+  }, [savedIds]);
 
   useEffect(() => {
     const run = async () => {
@@ -218,7 +229,7 @@ export default function CatalogPage() {
     run();
   }, []);
 
-  /** 카테고리 표시용 번역 (데이터는 한글 그대로지만, 라벨만 영문 표시) */
+  /** 카테고리 라벨 번역 (데이터는 한글 그대로, 라벨만 영문화) */
   const trL1 = (ko) => {
     if (!ko) return t("catL1.unspecified");
     const key = L1_KO_TO_KEY[ko];
@@ -236,7 +247,7 @@ export default function CatalogPage() {
     if (!tagTokens.length) return new Map();
 
     let base = items;
-    if (onlySaved && user) base = base.filter((p) => savedIds.has(p.id));
+    if (onlySaved && user) base = base.filter((p) => savedSet.has(p.id));
 
     base = base.filter((p) => {
       const tagSet = new Set((p.tags || []).map((t) => String(t).toLowerCase()));
@@ -257,14 +268,14 @@ export default function CatalogPage() {
       map.set(l1, (map.get(l1) || 0) + 1);
     });
     return map;
-  }, [items, onlySaved, user, savedIds, fTag, qText]);
+  }, [items, onlySaved, user, savedSet, fTag, qText]);
 
   /** 실제 화면 목록 */
   const filtered = useMemo(() => {
     let base = items;
 
     if (onlySaved && user) {
-      base = base.filter((p) => savedIds.has(p.id));
+      base = base.filter((p) => savedSet.has(p.id));
     }
     if (fCatL1) base = base.filter((p) => (p.categoryL1 || "") === fCatL1);
     if (fCatL2) base = base.filter((p) => (p.categoryL2 || "") === fCatL2);
@@ -301,7 +312,7 @@ export default function CatalogPage() {
     }
 
     return base;
-  }, [items, onlySaved, user, savedIds, fCatL1, fCatL2, fTag, qText, excludeRestock, facetCatsL1, facetMode]);
+  }, [items, onlySaved, user, savedSet, fCatL1, fCatL2, fTag, qText, excludeRestock, facetCatsL1, facetMode]);
 
   const resetFilters = () => {
     setFCatL1("");
@@ -313,6 +324,16 @@ export default function CatalogPage() {
   };
 
   const l2Options = fCatL1 ? CATEGORY_MAP[fCatL1] || [] : [];
+
+  /* ====== 저장 토글 핸들러 (JSX 밖으로 분리해 Vite 파서 이슈 해결) ====== */
+  const handleToggleSave = useCallback(
+    (id) => {
+      return Promise.resolve(toggleSave(id)).catch((e) => {
+        alert(e?.message || "Failed to save");
+      });
+    },
+    [toggleSave]
+  );
 
   return (
     <Container maxWidth="lg" sx={{ py: 2 }}>
@@ -522,17 +543,26 @@ export default function CatalogPage() {
           {t("common.total")} {items.length.toLocaleString()} / {t("common.shown")} {filtered.length.toLocaleString()}
         </Typography>
         {onlySaved && user && <Chip size="small" label={t("common.savedOnly")} variant="outlined" />}
-        {fCatL1 && <Chip size="small" label={`${t("chips.l1") }=${trL1(fCatL1)}`} />}
-        {fCatL2 && <Chip size="small" label={`${t("chips.l2") }=${trL2(fCatL2)}`} />}
-        {fTag && <Chip size="small" label={`${t("chips.tag") }=${fTag}`} />}
-        {qText && <Chip size="small" label={`${t("chips.search") }="${qText}"`} />}
+        {fCatL1 && <Chip size="small" label={`${t("chips.l1")}=${trL1(fCatL1)}`} />}
+        {fCatL2 && <Chip size="small" label={`${t("chips.l2")}=${trL2(fCatL2)}`} />}
+        {fTag && <Chip size="small" label={`${t("chips.tag")}=${fTag}`} />}
+        {qText && <Chip size="small" label={`${t("chips.search")}="${qText}"`} />}
         {excludeRestock && <Chip size="small" color="default" variant="outlined" label={t("chips.excludeRestock")} />}
         {fTag && facetCatsL1.size > 0 && (
-          <Chip
-            size="small"
-            label={`${t("chips.facet") }(${facetMode}): ${Array.from(facetCatsL1).map(trL1).join(", ")}`}
-          />
+          <Chip size="small" label={`${t("chips.facet")}(${facetMode}): ${Array.from(facetCatsL1).map(trL1).join(", ")}`} />
         )}
+        {/* Saved Only 스위치 (옵션) */}
+        <FormControlLabel
+          sx={{ marginLeft: "auto" }}
+          control={
+            <Checkbox
+              checked={onlySaved}
+              onChange={(e) => setOnlySaved(e.target.checked)}
+              size="small"
+            />
+          }
+          label={t("common.savedOnly")}
+        />
       </Stack>
 
       {/* 리스트 */}
@@ -554,15 +584,9 @@ export default function CatalogPage() {
               <ProductCard
                 product={p}
                 user={user}
-                isSaved={savedIds.has(p.id)}
+                isSaved={savedSet.has(p.id)}
                 restockPending={isRestockPending(p)}
-                onToggleSave={async (id) => {
-                  try {
-                    await toggleSave(id);
-                  } catch (e) {
-                    alert(e.message);
-                  }
-                }}
+                onToggleSave={handleToggleSave}
               />
             </Grid>
           ))}

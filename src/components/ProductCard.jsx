@@ -1,15 +1,8 @@
 // src/components/ProductCard.jsx
 import React, { useMemo } from "react";
+import { useLanguage } from "../context/LanguageContext";
 import {
-  Card,
-  CardActionArea,
-  CardContent,
-  Chip,
-  Stack,
-  Typography,
-  Box,
-  Tooltip,
-  IconButton,
+  Card, CardActionArea, CardContent, Chip, Stack, Typography, Box, Tooltip, IconButton,
 } from "@mui/material";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
@@ -37,11 +30,15 @@ export default function ProductCard({
     link,
     categoryL1,
     categoryL2,
+    productName_en,
+    name_en,
   } = product || {};
 
-  // Determine "restock soon" state.
-  // Note: We keep the Korean keyword detector for backward compatibility,
-  // but all UI strings are shown in English.
+  const { isKorean } = useLanguage();
+  // productName_en 또는 name_en 중 있는 값을 사용, 없으면 한글 name
+  const displayName = isKorean ? (name || "") : (productName_en || name_en || name || "");
+
+  // "재입고 예정" 상태
   const _restockPending = useMemo(() => {
     if (typeof restockPending === "boolean") return restockPending;
     const hasRestockKeyword = (v) => {
@@ -62,7 +59,6 @@ export default function ProductCard({
     onToggleSave && onToggleSave(id);
   };
 
-  // Fixed card size (fits a 4-column grid)
   const CARD_W = 250;
   const CARD_H = 400;
   const GAP_Y = 0.5;
@@ -85,7 +81,7 @@ export default function ProductCard({
         flexDirection: "column",
       }}
     >
-      {/* Image (square) + external link */}
+      {/* Image + link */}
       <CardActionArea
         component="a"
         href={link || "#"}
@@ -93,12 +89,11 @@ export default function ProductCard({
         rel={link ? "noopener noreferrer" : undefined}
         sx={{ position: "relative" }}
       >
-        {/* Safe square box (for environments without aspect-ratio) */}
         <Box sx={{ position: "relative", width: "100%", pt: "100%", bgcolor: "grey.50" }}>
           {imageUrl ? (
             <Box
               component="img"
-              alt={name}
+              alt={displayName || "product image"}
               src={imageUrl}
               sx={{
                 position: "absolute",
@@ -126,7 +121,6 @@ export default function ProductCard({
             </Box>
           )}
 
-          {/* Restock overlay */}
           {_restockPending && (
             <Box
               aria-label="Restock soon"
@@ -141,16 +135,12 @@ export default function ProductCard({
                 pointerEvents: "none",
               }}
             >
-              <Typography
-                variant="caption"
-                sx={{ color: "#fff", fontWeight: 800, letterSpacing: 0.5 }}
-              >
+              <Typography variant="caption" sx={{ color: "#fff", fontWeight: 800, letterSpacing: 0.5 }}>
                 Restock Soon
               </Typography>
             </Box>
           )}
 
-          {/* Top-right: save/unsave (heart) */}
           <Tooltip title={user ? (isSaved ? "Remove from saved" : "Save this item") : "Sign in required"}>
             <span>
               <IconButton
@@ -190,7 +180,7 @@ export default function ProductCard({
           minHeight: 0,
         }}
       >
-        {/* Title: clamp to 2 lines */}
+        {/* Title */}
         <Typography
           variant={TITLE_V}
           fontWeight={700}
@@ -203,21 +193,17 @@ export default function ProductCard({
             lineHeight: 1.25,
             fontSize: 13,
           }}
-          title={name}
+          title={displayName}
         >
-          {name}
+          {displayName}
         </Typography>
 
-        {/* Categories: show a single line */}
+        {/* Categories */}
         {showCategories && (categoryL1 || categoryL2 || _restockPending) && (
           <Box sx={{ maxHeight: 26, overflow: "hidden" }}>
             <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
-              {categoryL1 && (
-                <Chip size={CHIP_SIZE} variant="outlined" color="primary" label={`L1: ${categoryL1}`} />
-              )}
-              {categoryL2 && (
-                <Chip size={CHIP_SIZE} variant="outlined" color="info" label={`L2: ${categoryL2}`} />
-              )}
+              {categoryL1 && <Chip size={CHIP_SIZE} variant="outlined" color="primary" label={`L1: ${categoryL1}`} />}
+              {categoryL2 && <Chip size={CHIP_SIZE} variant="outlined" color="info" label={`L2: ${categoryL2}`} />}
               {_restockPending && <Chip size={CHIP_SIZE} variant="outlined" label="Restock Soon" />}
             </Stack>
           </Box>
@@ -226,14 +212,14 @@ export default function ProductCard({
         {/* Price (KRW + MYR) */}
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography variant={PRICE_V} fontWeight={700} sx={{ fontSize: 13 }}>
-            {formatKRW(price)}
+            {formatKRW(price || 0)}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {formatMYR(toMYR(price))}
+            {formatMYR(toMYR(price || 0))}
           </Typography>
         </Stack>
 
-        {/* Tags: one line +N */}
+        {/* Tags */}
         {showTags && limitedTags.length > 0 && (
           <Box sx={{ maxHeight: 24, overflow: "hidden" }}>
             <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
@@ -249,12 +235,7 @@ export default function ProductCard({
                 />
               ))}
               {restTagCount > 0 && (
-                <Chip
-                  size={CHIP_SIZE}
-                  variant="outlined"
-                  label={`+${restTagCount}`}
-                  title={tags.slice(maxTags).join(", ")}
-                />
+                <Chip size={CHIP_SIZE} variant="outlined" label={`+${restTagCount}`} title={tags.slice(maxTags).join(", ")} />
               )}
             </Stack>
           </Box>

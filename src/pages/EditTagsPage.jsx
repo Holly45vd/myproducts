@@ -15,11 +15,10 @@ import {
   AppBar, Toolbar, Typography, Container, Box, Grid, Card, CardContent,
   Checkbox, IconButton, Button, TextField, InputAdornment, Select, MenuItem, Chip,
   Stack, Divider, Snackbar, Alert, CircularProgress, Dialog, DialogTitle, DialogContent,
-  DialogContentText, DialogActions, Menu, Tooltip, FormControlLabel, CardMedia
+  DialogContentText, DialogActions, Menu, Tooltip, FormControlLabel
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import DeleteIcon from "@mui/icons-material/Delete";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
 import DownloadIcon from "@mui/icons-material/Download";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AddIcon from "@mui/icons-material/Add";
@@ -47,10 +46,26 @@ const CATEGORY_MAP = {
   "Best/New": ["Top Sellers", "New Arrivals"],
 };
 
-/** ===== Utils ===== */
-const PAGE_SIZE = 120;
+/* ================= Utils ================= */
 
+const PAGE_SIZE = 120;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** 안전한 브라우저 전역 접근 (SSR/HMR 대비) */
+function getBrowser() {
+  try {
+    const g = typeof globalThis !== "undefined"
+      ? globalThis
+      : typeof window !== "undefined"
+      ? window
+      : undefined;
+    if (!g || !g.document || !g.Blob || !(g.URL || g.webkitURL)) return null;
+    return g;
+  } catch {
+    return null;
+  }
+}
+
 const tokenizeTags = (input = "") =>
   String(input)
     .split(/[,|#/ ]+/)
@@ -64,9 +79,9 @@ const csvEscape = (v) => {
 
 function buildCsv(rows) {
   const header = [
-    "Product ID", "Product Name", "Product Code", "Price", "Rating", "Reviews", "Views",
+    "Product ID", "Product Name", "Product Name EN", "Product Code", "Price", "Rating", "Reviews", "Views",
     "Tags", "Link", "Image URL", "Has Image",
-    "Category L1", "Category L2",
+    "Category L1", "Category L2", "Category L1 EN", "Category L2 EN",
   ];
   const lines = [header.map(csvEscape).join(",")];
   rows.forEach((p) => {
@@ -74,6 +89,7 @@ function buildCsv(rows) {
       [
         p.id,
         p.name,
+        p.name_en || "",
         p.productCode || "",
         p.price ?? "",
         p.rating ?? "",
@@ -85,24 +101,32 @@ function buildCsv(rows) {
         p.imageUrl ? "Y" : "N",
         p.categoryL1 || "",
         p.categoryL2 || "",
+        p.categoryL1_en || "",
+        p.categoryL2_en || "",
       ].map(csvEscape).join(",")
     );
   });
   return lines.join("\r\n");
 }
 
-const downloadText = (content, filename, mime = "text/csv;charset=utf-8") => {
+/** 브라우저에서만 안전하게 파일 다운로드 */
+function downloadText(content, filename, mime = "text/csv;charset=utf-8") {
+  const g = getBrowser();
+  if (!g) {
+    console.error("Download is only available in browsers.");
+    return;
+  }
   const BOM = "\uFEFF";
-  const blob = new Blob([BOM + content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
+  const blob = new g.Blob([BOM + content], { type: mime });
+  const url = (g.URL || g.webkitURL).createObjectURL(blob);
+  const a = g.document.createElement("a");
   a.href = url;
   a.download = filename;
-  document.body.appendChild(a);
+  g.document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
-};
+  (g.URL || g.webkitURL).revokeObjectURL(url);
+}
 
 /* ===== CSV/Parsing utils ===== */
 function parseCsv(text) {
@@ -135,9 +159,11 @@ function parseCsv(text) {
 
 function normalizeHeader(h = "") {
   const raw = String(h).trim();
-  const canon = raw.toLowerCase().replace(/\s+/g, "").replace(/\([^)]*\)/g, "");
+  // 공백/밑줄 제거해서 관대한 매칭
+  const canon = raw.toLowerCase().replace(/[\s_]+/g, "").replace(/\([^)]*\)/g, "");
   if (["id", "상품id", "문서id", "productid"].includes(canon)) return "id";
   if (["상품명", "name", "title", "productname"].includes(canon)) return "name";
+  if (["영문명","영어명","productnameen","nameen","productname_en","name_en"].includes(canon)) return "name_en";
   if (["상품코드", "productcode", "code", "pdno"].includes(canon)) return "productCode";
   if (["가격", "price"].includes(canon)) return "price";
   if (["평점", "rating"].includes(canon)) return "rating";
@@ -145,12 +171,15 @@ function normalizeHeader(h = "") {
   if (["조회수", "views", "view"].includes(canon)) return "views";
   if (["태그", "tags"].includes(canon)) return "tags";
   if (["링크", "url", "link"].includes(canon)) return "link";
-  if (["이미지", "이미지url", "image", "imageurl", "thumbnail", "imageurl"].includes(canon)) return "imageUrl";
+  if (["이미지", "이미지url", "image", "imageurl", "thumbnail"].includes(canon)) return "imageUrl";
   if (["재입고", "restock", "restockable"].includes(canon)) return "restockable";
   if (["상태", "status"].includes(canon)) return "status";
   if (["재고", "stock", "재고수량"].includes(canon)) return "stock";
-  if (/^(대분류|categoryl1|category_l1|lnb|lnb1|categoryl1)$/.test(canon)) return "categoryL1";
-  if (/^(중분류|categoryl2|category_l2|sub|lnb2|categoryl2)$/.test(canon)) return "categoryL2";
+  if (/^(대분류|categoryl1|categoryl1)$/.test(canon)) return "categoryL1";
+  if (/^(중분류|categoryl2|categoryl2)$/.test(canon)) return "categoryL2";
+  // ✅ 영문 카테고리
+  if (/^(대분류en|categoryl1en|categoryl1_en)$/.test(canon)) return "categoryL1_en";
+  if (/^(중분류en|categoryl2en|categoryl2_en)$/.test(canon)) return "categoryL2_en";
   return raw;
 }
 
@@ -179,6 +208,7 @@ function rowToProduct(row, header) {
   const product = { id };
   const fields = {
     name: clean(obj.name || ""),
+    name_en: obj.name_en ? clean(obj.name_en) : undefined,
     imageUrl: clean(obj.imageUrl || ""),
     link: clean(obj.link || ""),
     productCode: clean(obj.productCode || ""),
@@ -191,6 +221,8 @@ function rowToProduct(row, header) {
     stock: obj.stock !== undefined ? Number(String(obj.stock).replace(/[^\d-]/g, "")) || 0 : undefined,
     categoryL1: obj.categoryL1 ? clean(obj.categoryL1) : undefined,
     categoryL2: obj.categoryL2 ? clean(obj.categoryL2) : undefined,
+    categoryL1_en: obj.categoryL1_en ? clean(obj.categoryL1_en) : undefined,
+    categoryL2_en: obj.categoryL2_en ? clean(obj.categoryL2_en) : undefined,
   };
   Object.entries(fields).forEach(([k, v]) => {
     if (v === undefined) return;
@@ -226,7 +258,7 @@ const CsvImportModal = React.memo(function CsvImportModal({ open, onClose, onAft
   const [fileName, setFileName] = useState("");
   const [raw, setRaw] = useState("");
   const [rows, setRows] = useState([]); // string[][]
-  const [header, setHeader] = useState([]); // normalized
+  const [header, setHeader] = useState([]); // normalized keys
   const [overwriteMode, setOverwriteMode] = useState(false);
   const [replaceTags, setReplaceTags] = useState(true);
   const [replaceCategories, setReplaceCategories] = useState(true);
@@ -266,20 +298,12 @@ const CsvImportModal = React.memo(function CsvImportModal({ open, onClose, onAft
 
   const downloadTemplate = () => {
     const headers = [
-      "Product ID","Product Name","Product Code","Price","Rating","Reviews","Views",
-      "Tags","Link","Image URL","Restockable","Status","Stock",
-      "Category L1","Category L2",
+      "id","name","name_en","productCode","price","rating","reviewCount","views",
+      "tags","link","imageUrl","restockable","status","stock",
+      "categoryL1","categoryL2","categoryL1_en","categoryL2_en",
     ];
     const content = "\uFEFF" + headers.join(",") + "\r\n";
-    const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "Product_Update_Template.csv";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    downloadText(content, "Product_Update_Template.csv");
   };
 
   const handleImport = async () => {
@@ -298,17 +322,24 @@ const CsvImportModal = React.memo(function CsvImportModal({ open, onClose, onAft
             // Merge mode
             const payload = { updatedAt: serverTimestamp() };
             if (replaceTags && rest.tags) payload.tags = rest.tags;
-            ["name","imageUrl","link","productCode","price","rating","reviewCount","views","restockable","status","stock"]
-              .forEach((k) => { if (rest[k] !== undefined) payload[k] = rest[k]; });
+
+            [
+              "name","name_en","imageUrl","link","productCode","price","rating",
+              "reviewCount","views","restockable","status","stock"
+            ].forEach((k) => { if (rest[k] !== undefined) payload[k] = rest[k]; });
+
             if (replaceCategories) {
               if (rest.categoryL1 !== undefined) payload.categoryL1 = rest.categoryL1;
               if (rest.categoryL2 !== undefined) payload.categoryL2 = rest.categoryL2;
+              if (rest.categoryL1_en !== undefined) payload.categoryL1_en = rest.categoryL1_en;
+              if (rest.categoryL2_en !== undefined) payload.categoryL2_en = rest.categoryL2_en;
             }
             batch.set(doc(db, "products", id), payload, { merge: true });
           } else {
             // Overwrite mode (merge:false)
             const over = {
               name: rest.name ?? "",
+              name_en: rest.name_en ?? "",
               imageUrl: rest.imageUrl ?? "",
               link: rest.link ?? "",
               productCode: rest.productCode ?? "",
@@ -324,6 +355,8 @@ const CsvImportModal = React.memo(function CsvImportModal({ open, onClose, onAft
             if (replaceCategories) {
               over.categoryL1 = rest.categoryL1 ?? "";
               over.categoryL2 = rest.categoryL2 ?? "";
+              over.categoryL1_en = rest.categoryL1_en ?? "";
+              over.categoryL2_en = rest.categoryL2_en ?? "";
             }
             if (replaceTags) {
               over.tags = rest.tags ?? [];
@@ -409,8 +442,9 @@ const CsvImportModal = React.memo(function CsvImportModal({ open, onClose, onAft
             maxRows={12}
             multiline
             placeholder={`Paste CSV/TSV here
-Example: id,name,price,tags,categoryL1,categoryL2
-1038756,Traditional Pattern Envelope (2pcs),1000,"traditional | envelope | pink",Season/Series,Traditional Series`}
+Example:
+id,name,name_en,price,tags,categoryL1,categoryL2,categoryL1_en,categoryL2_en
+1038756,전통 디자인 봉투 2매입,Traditional Pattern Envelope (2pcs),1000,"traditional | envelope | pink",시즌/시리즈,전통 시리즈,Season/Series,Traditional Series`}
             value={raw}
             onChange={(e) => { const v = e.target.value; setRaw(v); if (v) loadText(v); }}
             fullWidth
@@ -425,7 +459,11 @@ Example: id,name,price,tags,categoryL1,categoryL2
           <table style={{ borderCollapse: "collapse", width: "100%" }}>
             <thead>
               <tr style={{ background: "#fafafa" }}>
-                {["id","name","productCode","price","rating","reviewCount","views","tags","link","imageUrl","restockable","status","stock","categoryL1","categoryL2"].map((h) => (
+                {[
+                  "id","name","name_en","productCode","price","rating","reviewCount","views",
+                  "tags","link","imageUrl","restockable","status","stock",
+                  "categoryL1","categoryL2","categoryL1_en","categoryL2_en"
+                ].map((h) => (
                   <th key={h} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #eee", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
@@ -435,6 +473,7 @@ Example: id,name,price,tags,categoryL1,categoryL2
                 <tr key={i} style={{ borderTop: "1px solid #f3f4f6" }}>
                   <td style={{ padding: 8 }}>{p.id}</td>
                   <td style={{ padding: 8 }}>{p.name || ""}</td>
+                  <td style={{ padding: 8 }}>{p.name_en || ""}</td>
                   <td style={{ padding: 8 }}>{p.productCode || ""}</td>
                   <td style={{ padding: 8 }}>{p.price ?? ""}</td>
                   <td style={{ padding: 8 }}>{p.rating ?? ""}</td>
@@ -448,6 +487,8 @@ Example: id,name,price,tags,categoryL1,categoryL2
                   <td style={{ padding: 8 }}>{p.stock ?? ""}</td>
                   <td style={{ padding: 8 }}>{p.categoryL1 ?? ""}</td>
                   <td style={{ padding: 8 }}>{p.categoryL2 ?? ""}</td>
+                  <td style={{ padding: 8 }}>{p.categoryL1_en ?? ""}</td>
+                  <td style={{ padding: 8 }}>{p.categoryL2_en ?? ""}</td>
                 </tr>
               ))}
             </tbody>
@@ -534,9 +575,7 @@ export default function EditTagsAndCategoriesPage() {
         } else {
           setItems((prev) => [...prev, ...rows]);
         }
-        if (snap.docs.length < PAGE_SIZE) setHasMore(false);
-        else setHasMore(true);
-
+        setHasMore(snap.docs.length >= PAGE_SIZE);
         lastDocRef.current = snap.docs[snap.docs.length - 1] || null;
       } catch (e) {
         setSnack({ open: true, msg: `Failed to load: ${e.message}`, severity: "error" });
@@ -556,7 +595,7 @@ export default function EditTagsAndCategoriesPage() {
   }, [loadPage]);
 
   // Search debounce + Defer + Transition
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [debounced, setDebounced] = useState("");
   useEffect(() => {
     const t = setTimeout(() => {

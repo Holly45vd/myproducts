@@ -14,6 +14,8 @@ import OrdersPage from "./pages/OrdersPage.jsx";
 import OrderDetailPage from "./pages/OrderDetailPage.jsx";
 import { isAdmin } from "./utils/authz";
 import AuthModal from "./components/AuthModal";   // ✅ 추가
+import { LanguageProvider } from './context/LanguageContext';
+
 import "./i18n";
 
 export default function App() {
@@ -25,6 +27,8 @@ export default function App() {
 
   return (
     <BrowserRouter>
+    <LanguageProvider>
+
       <Navbar
         user={user}
         onSignIn={() => setAuthOpen(true)}
@@ -73,6 +77,7 @@ export default function App() {
           }
         />
       </Routes>
+      </LanguageProvider>
     </BrowserRouter>
   );
 }
