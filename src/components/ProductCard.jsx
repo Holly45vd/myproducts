@@ -1,5 +1,5 @@
 // src/components/ProductCard.jsx
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import {
   Card, CardActionArea, CardContent, Chip, Stack, Typography, Box, Tooltip, IconButton,
@@ -12,8 +12,8 @@ import { formatKRW, formatMYR, toMYR } from "../utils/currency";
 export default function ProductCard({
   product,
   user,
-  isSaved = false,
-  onToggleSave,
+  isSaved = false,           // 부모가 내려주는 현재 저장상태
+  onToggleSave,             // (id) => Promise
   onTagClick,
   restockPending,
   dense = true,
@@ -35,10 +35,9 @@ export default function ProductCard({
   } = product || {};
 
   const { isKorean } = useLanguage();
-  // productName_en 또는 name_en 중 있는 값을 사용, 없으면 한글 name
   const displayName = isKorean ? (name || "") : (productName_en || name_en || name || "");
 
-  // "재입고 예정" 상태
+  // ====== 재입고 예정 감지 ======
   const _restockPending = useMemo(() => {
     if (typeof restockPending === "boolean") return restockPending;
     const hasRestockKeyword = (v) => {
@@ -49,14 +48,37 @@ export default function ProductCard({
     return hasRestockKeyword(tags);
   }, [restockPending, tags]);
 
-  const tryToggle = (e) => {
+  // ====== 낙관적 저장 상태 ======
+  const [savedLocal, setSavedLocal] = useState(Boolean(isSaved));
+  const [saving, setSaving] = useState(false);
+
+  // 부모가 내려주는 isSaved가 바뀌면 동기화
+  useEffect(() => {
+    setSavedLocal(Boolean(isSaved));
+  }, [isSaved]);
+
+  const handleHeartClick = async (e) => {
     e?.preventDefault?.();
     e?.stopPropagation?.();
     if (!user) {
       alert("Sign in required");
       return;
     }
-    onToggleSave && onToggleSave(id);
+    if (!onToggleSave || saving) return;
+
+    const next = !savedLocal;
+    setSavedLocal(next);     // 낙관적 반영
+    setSaving(true);
+    try {
+      await onToggleSave(id);  // 부모 훅이 실제 토글 수행
+      // 성공이면 그대로 둠. (부모의 savedIds가 바뀌면 위 useEffect로도 동기화됨)
+    } catch (err) {
+      // 실패면 롤백
+      setSavedLocal(!next);
+      alert(err?.message || "Failed to save");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const CARD_W = 250;
@@ -83,8 +105,8 @@ export default function ProductCard({
     >
       {/* Image + link */}
       <CardActionArea
-        component="a"
-        href={link || "#"}
+        component={link ? "a" : "div"}   // link 없으면 div
+        href={link || undefined}         // "#" 금지
         target={link ? "_blank" : undefined}
         rel={link ? "noopener noreferrer" : undefined}
         sx={{ position: "relative" }}
@@ -121,6 +143,33 @@ export default function ProductCard({
             </Box>
           )}
 
+          {/* 하트 버튼 (낙관적 반영 + 전파 차단) */}
+          <Tooltip title={user ? (savedLocal ? "Remove from saved" : "Save this item") : "Sign in required"}>
+            <span>
+              <IconButton
+                onClick={handleHeartClick}
+                size="small"
+                disabled={!user || saving}
+                aria-label={savedLocal ? "Remove from saved" : "Save this item"}
+                sx={{
+                  position: "absolute",
+                  top: 6,
+                  right: 6,
+                  bgcolor: "rgba(255,255,255,0.85)",
+                  border: "1px solid",
+                  borderColor: "grey.300",
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.95)" },
+                }}
+              >
+                {savedLocal ? (
+                  <FavoriteIcon sx={{ color: "grey.900" }} />
+                ) : (
+                  <FavoriteBorderIcon sx={{ color: "grey.700" }} />
+                )}
+              </IconButton>
+            </span>
+          </Tooltip>
+
           {_restockPending && (
             <Box
               aria-label="Restock soon"
@@ -140,32 +189,6 @@ export default function ProductCard({
               </Typography>
             </Box>
           )}
-
-          <Tooltip title={user ? (isSaved ? "Remove from saved" : "Save this item") : "Sign in required"}>
-            <span>
-              <IconButton
-                onClick={tryToggle}
-                size="small"
-                disabled={!user}
-                aria-label={isSaved ? "Remove from saved" : "Save this item"}
-                sx={{
-                  position: "absolute",
-                  top: 6,
-                  right: 6,
-                  bgcolor: "rgba(255,255,255,0.85)",
-                  border: "1px solid",
-                  borderColor: "grey.300",
-                  "&:hover": { bgcolor: "rgba(255,255,255,0.95)" },
-                }}
-              >
-                {isSaved ? (
-                  <FavoriteIcon sx={{ color: "grey.900" }} />
-                ) : (
-                  <FavoriteBorderIcon sx={{ color: "grey.700" }} />
-                )}
-              </IconButton>
-            </span>
-          </Tooltip>
         </Box>
       </CardActionArea>
 
