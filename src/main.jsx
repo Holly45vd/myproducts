@@ -1,12 +1,2 @@
 // src/main.jsx
-import React from "react";
-import { createRoot } from "react-dom/client";
-import App from "./App.jsx";
-import "./index.css";        
-import './i18n';   // 쓰고 있으면 유지
-
-createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+import "./app/main.jsx";
