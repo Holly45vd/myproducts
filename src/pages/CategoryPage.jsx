@@ -7,6 +7,8 @@ import { useSaved } from "../providers/SavedProvider";
 import { haystack } from "../shared/utils/search";
 import { tokenizeTags, hasAllTags } from "../shared/utils/tags";
 import { useLanguage } from "../context/LanguageContext";
+import Grid from "@mui/material/Grid";
+import ProductsGrid from "../components/ProductsGrid"; // 없으면 아래 B안 참고
 
 export default function CategoryPage() {
   const { savedSet, toggleSave, loadingUser, user } = useSaved();
@@ -80,6 +82,17 @@ export default function CategoryPage() {
             {isKorean ? (p.name || p.name_en || p.id) : (p.name_en || p.name || p.id)}
           </Typography>
             {(p.tags || []).slice(0, 3).map(t => <Chip key={t} size="small" label={t} />)}
+
+    {/* 카드 그리드 */}
+    <ProductsGrid
+      loading={false}
+      filtered={filtered}
+      user={user}
+      savedSet={savedSet}
+      onToggleSave={toggleSave}
+    />
+
+
 <IconButton
   type="button"
   onClick={async (e) => {
